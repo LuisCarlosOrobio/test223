@@ -2,24 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Images with Prompts</title>
+    <title>Image Upload</title>
+    <style>
+        .img-container {
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
 <body>
 
-<form>
-    <label for="prompt">Enter Prompt:</label>
-    <textarea id="prompt" name="prompt" rows="4" cols="50"></textarea>
-    <br><br>
+<h2>Image Upload with Prompt</h2>
+
+<form id="inputForm">
+    <label for="textprompt">Enter Prompt:</label><br>
+    <textarea id="textprompt" name="textprompt" rows="4" cols="50">
+    Describe [img-101] in detail.
+    </textarea><br><br>
 
     <div id="imgInputContainer">
         <!-- Image input slots will be appended here dynamically -->
     </div>
 
-    <button type="button" onclick="addImageInput()">Add another image</button>
-    <br><br>
-
+    <button type="button" onclick="addImageInput()">Add another image</button><br><br>
     <input type="submit" value="Submit">
 </form>
 
@@ -36,53 +41,56 @@
         container.appendChild(div);
     }
 
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
+    document.getElementById('inputForm').addEventListener('submit', function(e) {
+        e.preventDefault(); // prevent default form submission
 
-        const promptText = document.getElementById('prompt').value;
-        const imageInputs = document.querySelectorAll('#imgInputContainer input[type="file"]');
-        const data = {
-            prompt: promptText,
-            image_data: []
-        };
+        // Collect prompt
+        const promptText = document.getElementById('textprompt').value;
 
-        imageInputs.forEach((input, index) => {
-            const file = input.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function() {
-                const base64String = reader.result.replace(/^data:(.*;base64,)?/, '');
-                data.image_data.push({
-                    data: base64String,
-                    id: index + 1
-                });
-
-                if (data.image_data.length === imageInputs.length) {
-                    console.log(data);
-
-                    fetch('http://localhost:5001/upload', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(data)
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log(data);  // Process server's response here.
-                    })
-                    .catch((error) => {
-                        console.error('Error:', error);
+        // Collect images
+        let images = [];
+        document.querySelectorAll('input[type="file"]').forEach((input, index) => {
+            let file = input.files[0];
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    images.push({
+                        data: e.target.result.split(',')[1], // remove the prefix like "data:image/jpeg;base64,"
+                        id: index + 101 // assigning unique IDs starting from 101
                     });
-                }
-            };
-            reader.readAsDataURL(file);
+
+                    // If all images are read
+                    if (images.length === document.querySelectorAll('input[type="file"]').length) {
+                        const data = {
+                            prompt: promptText,
+                            image_data: images
+                        };
+
+                        // Send the data object to your server.
+                        fetch('http://localhost:5001/upload', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log(data);
+                            // Display the response or handle it as needed
+                        })
+                        .catch((error) => {
+                            console.error('Error:', error);
+                        });
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
         });
     });
 
-    addImageInput();  // Add the first image input slot by default
+    // Add the first image input slot by default
+    addImageInput();
 </script>
 
 </body>
