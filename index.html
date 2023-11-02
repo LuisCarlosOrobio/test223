@@ -1,72 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Image Upload</title>
 </head>
-
 <body>
 
-    <h2>Image Upload with Prompt</h2>
+<h2>Image Upload with Prompt</h2>
 
-    <form id="inputForm">
-        <label for="textprompt">Enter Prompt:</label><br>
-        <textarea id="textprompt" name="textprompt" rows="4" cols="50">
-    Describe [img-101] in detail.
+<form id="inputForm">
+    <label for="textprompt">Enter Prompt:</label><br>
+    <textarea id="textprompt" name="textprompt" rows="4" cols="50">
+Describe [img-101] in detail.
     </textarea><br><br>
 
-        <label for="image">Upload Image:</label>
-        <input type="file" id="image" name="image" accept="image/*">
-        <br><br>
+    <label for="image">Upload Image:</label>
+    <input type="file" id="image" name="image" accept="image/*"><br><br>
 
-        <input type="submit" value="Submit">
-    </form>
+    <input type="button" id="submitBtn" value="Submit">
+</form>
 
-    <script>
-        document.getElementById('inputForm').addEventListener('submit', function (e) {
-            e.preventDefault(); // prevent default form submission
+<script>
+    document.getElementById('submitBtn').addEventListener('click', function(e) {
+        const promptText = document.getElementById('textprompt').value.trim(); // Trim whitespace
 
-            const promptText = document.getElementById('textprompt').value;
-
-            let image_data = document.getElementById('image').files[0];
-            if (image_data) {
-                const reader = new FileReader();
-                reader.onload = function () {
-                    let processed_image_data = {
-                        data: reader.result.split(',')[1], // remove the prefix like "data:image/jpeg;base64,"
-                        id: 101
-                    };
-
-                    const data = {
-                        prompt: promptText,
-                        image_data: [processed_image_data]
-                    };
-
-                    // Send the data object to your server.
-                    fetch('http://localhost:5001/upload', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(data)
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log(data);
-                        // Display the response or handle it as needed
-                    })
-                    .catch((error) => {
-                        console.error('Error:', error);
-                    });
+        let imageData = document.getElementById('image').files[0];
+        if (imageData) {
+            const reader = new FileReader();
+            reader.onload = function () {
+                let base64Data = reader.result.split(',')[1]; // remove the prefix like "data:image/jpeg;base64,"
+                let payload = {
+                    prompt: promptText,
+                    image_data: [{ data: base64Data, id: 101 }]
                 };
-                reader.readAsDataURL(image_data);
-            }
-        });
 
-    </script>
+                fetch('http://localhost:5001/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Success:', data);
+                    // Handle the response data
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+            };
+            reader.readAsDataURL(imageData);
+        } else {
+            // Handle case where no image is selected
+            alert("Please select an image to upload.");
+        }
+    });
+</script>
 
 </body>
-
 </html>
