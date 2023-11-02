@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import requests
+import json
 
 app = Flask(__name__)
 
@@ -10,31 +11,43 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if request.method == 'POST':
-        # get the text prompt from the form
-        textprompt = request.form.get("textprompt")
+        # Parse the incoming JSON data
+        incoming_data = request.json
 
-        # You might want to handle the image data as well, but for simplicity, I'm focusing on the text prompt.
+        # Extract the text prompt
+        textprompt = incoming_data["prompt"]
+
+        # Extract images (if any)
+        images = incoming_data.get("image_data", [])
+        
+        # Process the images to construct the expected payload for Llama server
+        image_data_list = []
+        for img in images:
+            image_data_list.append({
+                "id": img["id"],
+                "prefix": textprompt.split(f"[img-{img['id']}]")[0]
+            })
+            textprompt = textprompt.split(f"[img-{img['id']}]")[1]
 
         # Construct the payload for Llama server
         payload = {
-            "prompt": textprompt,
+            "prompt": textprompt,  # this will be the remaining text after all images have been processed
+            "image_data": image_data_list,
             "n_predict": 128  # or whatever value you prefer
         }
 
-        # make a POST request to the Llama server
+        # Make a POST request to the Llama server
         response = requests.post("http://127.0.0.1:5000/completion", json=payload)
 
         # For debugging purposes:
         print(response.text)
 
-        # You can process the response from the Llama server and return something meaningful to the client
+        # Process the response from the Llama server and return something meaningful to the client
         try:
             json_data = response.json()
-            # You might want to process json_data further, extract the content or handle errors.
             return jsonify(json_data)
         except Exception as e:
             return f"An error occurred: {str(e)}", 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
+    app.run(debug=True, port=5001)  # Ensuring it runs on port 5001
