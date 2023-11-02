@@ -1,29 +1,40 @@
-from flask import Flask, request, jsonify
-import os
+from flask import Flask, render_template, request, jsonify
 import requests
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    # Handling the image and text data
-    image = request.files['image']
-    textprompt = request.form['textprompt']
+    if request.method == 'POST':
+        # get the text prompt from the form
+        textprompt = request.form.get("textprompt")
 
-    # For this example, we'll save the image locally, but you can handle it as required
-    image_path = os.path.join(app.config['UPLOAD_FOLDER'], image.filename)
-    image.save(image_path)
+        # You might want to handle the image data as well, but for simplicity, I'm focusing on the text prompt.
 
-    # Forward the data to the "llama server"
-    with open(image_path, 'rb') as img_file:
-        response = requests.post("http://localhost:5000/upload", data={'textprompt': textprompt}, files={'image': img_file})
+        # Construct the payload for Llama server
+        payload = {
+            "prompt": textprompt,
+            "n_predict": 128  # or whatever value you prefer
+        }
 
-    # Return the response from the "llama server" or handle as required
-    return response.content
+        # make a POST request to the Llama server
+        response = requests.post("http://127.0.0.1:5000/completion", json=payload)
+
+        # For debugging purposes:
+        print(response.text)
+
+        # You can process the response from the Llama server and return something meaningful to the client
+        try:
+            json_data = response.json()
+            # You might want to process json_data further, extract the content or handle errors.
+            return jsonify(json_data)
+        except Exception as e:
+            return f"An error occurred: {str(e)}", 500
 
 if __name__ == '__main__':
-    app.run(port=5001)
+    app.run(debug=True)
+
