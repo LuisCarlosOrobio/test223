@@ -1,97 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Image Upload</title>
-    <style>
-        .img-container {
-            margin-bottom: 15px;
-        }
-    </style>
 </head>
+
 <body>
 
-<h2>Image Upload with Prompt</h2>
+    <h2>Image Upload with Prompt</h2>
 
-<form id="inputForm">
-    <label for="textprompt">Enter Prompt:</label><br>
-    <textarea id="textprompt" name="textprompt" rows="4" cols="50">
+    <form id="inputForm">
+        <label for="textprompt">Enter Prompt:</label><br>
+        <textarea id="textprompt" name="textprompt" rows="4" cols="50">
     Describe [img-101] in detail.
     </textarea><br><br>
 
-    <div id="imgInputContainer">
-        <!-- Image input slots will be appended here dynamically -->
-    </div>
+        <label for="image">Upload Image:</label>
+        <input type="file" id="image" name="image" accept="image/*">
+        <br><br>
 
-    <button type="button" onclick="addImageInput()">Add another image</button><br><br>
-    <input type="submit" value="Submit">
-</form>
+        <input type="submit" value="Submit">
+    </form>
 
-<script>
-    function addImageInput() {
-        const container = document.getElementById('imgInputContainer');
-        const div = document.createElement('div');
-        div.classList.add('img-container');
-        div.innerHTML = `
-            <label for="image">Upload Image:</label>
-            <input type="file" id="image" name="image" accept="image/*">
-            <br><br>
-        `;
-        container.appendChild(div);
-    }
+    <script>
+        document.getElementById('inputForm').addEventListener('submit', function (e) {
+            e.preventDefault(); // prevent default form submission
 
-    document.getElementById('inputForm').addEventListener('submit', function(e) {
-        e.preventDefault(); // prevent default form submission
+            const promptText = document.getElementById('textprompt').value;
 
-        // Collect prompt
-        const promptText = document.getElementById('textprompt').value;
+            let image_data = document.getElementById('image').files[0];
+            if (image_data) {
+                const reader = new FileReader();
+                reader.onload = function () {
+                    let processed_image_data = {
+                        data: reader.result.split(',')[1], // remove the prefix like "data:image/jpeg;base64,"
+                        id: 101
+                    };
 
-        // Collect images
-        let images = [];
-        document.querySelectorAll('input[type="file"]').forEach((input, index) => {
-            let file = input.files[0];
-            if (file) {
-                let reader = new FileReader();
-                reader.onload = function(e) {
-                    images.push({
-                        data: e.target.result.split(',')[1], // remove the prefix like "data:image/jpeg;base64,"
-                        id: index + 101 // assigning unique IDs starting from 101
+                    const data = {
+                        prompt: promptText,
+                        image_data: [processed_image_data]
+                    };
+
+                    // Send the data object to your server.
+                    fetch('http://localhost:5001/upload', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        // Display the response or handle it as needed
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
                     });
-
-                    // If all images are read
-                    if (images.length === document.querySelectorAll('input[type="file"]').length) {
-                        const data = {
-                            prompt: promptText,
-                            image_data: images
-                        };
-
-                        // Send the data object to your server.
-                        fetch('http://localhost:5001/upload', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(data)
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log(data);
-                            // Display the response or handle it as needed
-                        })
-                        .catch((error) => {
-                            console.error('Error:', error);
-                        });
-                    }
                 };
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(image_data);
             }
         });
-    });
 
-    // Add the first image input slot by default
-    addImageInput();
-</script>
+    </script>
 
 </body>
+
 </html>
