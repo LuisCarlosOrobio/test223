@@ -1,5 +1,6 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import os
+import requests
 
 app = Flask(__name__)
 
@@ -9,24 +10,20 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    # Check if the post request has the file part
-    if 'image' not in request.files:
-        return 'No file part'
-    file = request.files['image']
-    
-    # If the user does not select a file, the browser might submit an empty file without a filename
-    if file.filename == '':
-        return 'No selected file'
-    if file:
-        # Save the uploaded file
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(filepath)
-        
-        # Retrieve and print the text prompt
-        textprompt = request.form['textprompt']
-        print(f"Received text prompt: {textprompt}")
-        
-        return 'File and text prompt uploaded successfully!'
+    # Handling the image and text data
+    image = request.files['image']
+    textprompt = request.form['textprompt']
+
+    # For this example, we'll save the image locally, but you can handle it as required
+    image_path = os.path.join(app.config['UPLOAD_FOLDER'], image.filename)
+    image.save(image_path)
+
+    # Forward the data to the "llama server"
+    with open(image_path, 'rb') as img_file:
+        response = requests.post("http://localhost:5000/upload", data={'textprompt': textprompt}, files={'image': img_file})
+
+    # Return the response from the "llama server" or handle as required
+    return response.content
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(port=5001)
