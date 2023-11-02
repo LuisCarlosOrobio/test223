@@ -1,0 +1,8 @@
+version: 2
+tunnels:
+  flaskapp:
+    proto: http
+    addr: 5001
+  llamasever:
+    proto: http
+    addr: 5000
