@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Image and Text Prompt</title>
+</head>
+
+<body>
+    <h2>Upload Image and Text Prompt</h2>
+    <form action="http://localhost:5000/upload" method="post" enctype="multipart/form-data">
+        <div>
+            <label for="image">Select image:</label>
+            <input type="file" name="image" accept="image/*" required>
+        </div>
+        <div>
+            <label for="textprompt">Enter text prompt:</label>
+            <input type="text" name="textprompt" required>
+        </div>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+
+</html>
