@@ -32,21 +32,27 @@ def upload_file():
         # Construct the payload for Llama server
         payload = {
             "prompt": textprompt,  
-            "image_data": image_data_list,
-            "n_predict": 128
+            "image_data": image_data_list
         }
 
-        # Make a POST request to the Llama server
-        response = requests.post("http://127.0.0.1:5000/completion", json=payload)
+        # Enhanced Logging: Print the payload to ensure it's constructed correctly
+        print("Constructed Payload for Llama Server:", payload)
 
-        # For debugging purposes:
-        print(response.text)
-
-        # Process the response from the Llama server and return something meaningful to the client
         try:
+            # Make a POST request to the Llama server
+            response = requests.post("http://127.0.0.1:5000/completion", json=payload)
+            
+            # For debugging purposes:
+            print("Response from Llama Server:", response.text)
+            
+            # Process the response from the Llama server and return something meaningful to the client
             json_data = response.json()
             return jsonify(json_data)
+        except requests.RequestException as re:
+            print(f"Request Error: {str(re)}")
+            return f"An error occurred with the request: {str(re)}", 500
         except Exception as e:
+            print(f"General Error: {str(e)}")
             return f"An error occurred: {str(e)}", 500
 
 if __name__ == '__main__':
