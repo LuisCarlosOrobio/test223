@@ -1,3 +1,4 @@
+authtoken: 
 version: 2
 tunnels:
   flaskapp:
