@@ -15,48 +15,66 @@
 Describe [img-101] in detail.
     </textarea><br><br>
 
-    <label for="image">Upload Image:</label>
-    <input type="file" id="image" name="image" accept="image/*"><br><br>
+    <label for="fileInput">Upload Image:</label>
+    <input type="file" id="fileInput" name="fileInput" accept="image/*" onclick="uploadImage(event)"><br><br>
 
     <input type="button" id="submitBtn" value="Submit">
 </form>
 
 <script>
+    let session = { value: {} };
+    let params = { value: {} };
+    let selected_image = false;
+
+    const uploadImage = (e) => {
+      e.preventDefault();
+      document.getElementById("fileInput").addEventListener("change", function (event) {
+        const selectedFile = event.target.files[0];
+        if (selectedFile) {
+          const reader = new FileReader();
+          reader.onload = function () {
+            const image_data = reader.result;
+            session.value = { ...session.value, image_selected: image_data };
+            params.value = {
+              ...params.value, image_data: [
+                { data: image_data.replace(/data:image\/[^;]+;base64,/, ''), id: 10 }]
+            };
+          };
+          selected_image = true;
+          reader.readAsDataURL(selectedFile);
+        }
+      });
+    }
+
     document.getElementById('submitBtn').addEventListener('click', function(e) {
         const promptText = document.getElementById('textprompt').value.trim(); // Trim whitespace
 
-        let imageData = document.getElementById('image').files[0];
-        if (imageData) {
-            const reader = new FileReader();
-            reader.onload = function () {
-                let base64Data = reader.result.split(',')[1]; // remove the prefix like "data:image/jpeg;base64,"
-                let payload = {
-                    prompt: promptText,
-                    image_data: [{ data: base64Data, id: 101 }]
-                };
-
-                fetch('/upload', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Success:', data);
-                    // Handle the response data
-                })
-                .catch((error) => {
-                    console.error('Error:', error);
-                });
+        if (selected_image) {
+            let payload = {
+                prompt: promptText,
+                image_data: params.value.image_data
             };
-            reader.readAsDataURL(imageData);
+
+            fetch('/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Success:', data);
+                // Handle the response data
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
         } else {
             // Handle case where no image is selected
             alert("Please select an image to upload.");
