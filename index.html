@@ -1,56 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Image Upload</title>
 </head>
+
 <body>
 
-<h2>Image Upload with Prompt</h2>
+    <h2>Image Upload with Prompt</h2>
 
-<form id="inputForm">
-    <label for="textprompt">Enter Prompt:</label><br>
-    <textarea id="textprompt" name="textprompt" rows="4" cols="50">
+    <form id="inputForm">
+        <label for="textprompt">Enter Prompt:</label><br>
+        <textarea id="textprompt" name="textprompt" rows="4" cols="50">
 Describe [img-101] in detail.
-    </textarea><br><br>
+        </textarea><br><br>
 
-    <label for="fileInput">Upload Image:</label>
-    <input type="file" id="fileInput" name="fileInput" accept="image/*" onclick="uploadImage(event)"><br><br>
+        <label for="fileInput">Upload Image:</label>
+        <input type="file" id="image" name="image" accept="image/*" onchange="handleImageChange(event)"><br><br>
 
-    <input type="button" id="submitBtn" value="Submit">
-</form>
+        <input type="button" id="submitBtn" value="Submit" onclick="handleSubmit()">
+    </form>
 
-<script>
-    let session = { value: {} };
-    let params = { value: {} };
-    let selected_image = false;
+    <script>
+        let session = { value: {} };
+        let params = { value: {} };
+        let selected_image = false;
 
-    const uploadImage = (e) => {
-      e.preventDefault();
-      document.getElementById("fileInput").addEventListener("change", function (event) {
-        const selectedFile = event.target.files[0];
-        if (selectedFile) {
-          const reader = new FileReader();
-          reader.onload = function () {
-            const image_data = reader.result;
-            session.value = { ...session.value, image_selected: image_data };
-            params.value = {
-              ...params.value, image_data: [
-                { data: image_data.replace(/data:image\/[^;]+;base64,/, ''), id: 10 }]
-            };
-          };
-          selected_image = true;
-          reader.readAsDataURL(selectedFile);
-        }
-      });
-    }
+        const handleImageChange = (event) => {
+            const selectedFile = event.target.files[0];
+            if (selectedFile) {
+                const reader = new FileReader();
+                reader.onload = function () {
+                    const image_data = reader.result;
+                    session.value = { ...session.value, image_selected: image_data };
+                    params.value = {
+                        ...params.value,
+                        image_data: [
+                            { data: image_data.replace(/data:image\/[^;]+;base64,/, ''), id: 10 }
+                        ]
+                    };
+                    selected_image = true;
+                };
+                reader.readAsDataURL(selectedFile);
+            }
+        };
 
-    document.getElementById('submitBtn').addEventListener('click', function(e) {
-        const promptText = document.getElementById('textprompt').value.trim(); // Trim whitespace
+        const handleSubmit = () => {
+            const promptText = document.getElementById('textprompt').value.trim(); // Trim whitespace
 
-        if (selected_image) {
-            let payload = {
+            if (!selected_image) {
+                alert("Please select an image to upload.");
+                return;
+            }
+
+            const payload = {
                 prompt: promptText,
                 image_data: params.value.image_data
             };
@@ -75,12 +80,9 @@ Describe [img-101] in detail.
             .catch((error) => {
                 console.error('Error:', error);
             });
-        } else {
-            // Handle case where no image is selected
-            alert("Please select an image to upload.");
-        }
-    });
-</script>
+        };
+    </script>
 
 </body>
+
 </html>
