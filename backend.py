@@ -24,7 +24,7 @@ def upload_file():
         for img in images:
             split_result = textprompt.split(f"[img-{img['id']}]")
             image_data_list.append({
-                "id": img["id"],  # Keeping ID as number
+                "id": str(img["id"]),  # Converting ID to string
                 "prefix": split_result[0]
             })
             textprompt = split_result[1] if len(split_result) > 1 else ""
@@ -33,7 +33,7 @@ def upload_file():
         payload = {
             "prompt": textprompt,  
             "image_data": image_data_list,
-            "n_predict": 128  # Keeping it as number
+            "n_predict": 128
         }
 
         # Make a POST request to the Llama server
@@ -50,4 +50,4 @@ def upload_file():
             return f"An error occurred: {str(e)}", 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)  # Ensuring it runs on port 5001
+    app.run(debug=True, port=5001)
