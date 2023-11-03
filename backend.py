@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, jsonify
 import requests
-import json
 
 app = Flask(__name__)
 
@@ -23,17 +22,18 @@ def upload_file():
         # Process the images to construct the expected payload for Llama server
         image_data_list = []
         for img in images:
+            split_result = textprompt.split(f"[img-{img['id']}]")
             image_data_list.append({
-                "id": img["id"],
-                "prefix": textprompt.split(f"[img-{img['id']}]")[0]
+                "id": str(img["id"]),  # Ensure ID is a string
+                "prefix": split_result[0]
             })
-            textprompt = textprompt.split(f"[img-{img['id']}]")[1]
+            textprompt = split_result[1] if len(split_result) > 1 else ""
 
         # Construct the payload for Llama server
         payload = {
-            "prompt": textprompt,  # this will be the remaining text after all images have been processed
+            "prompt": textprompt,  
             "image_data": image_data_list,
-            "n_predict": 128  # or whatever value you prefer
+            "n_predict": str(128)  # Convert to string to check if it resolves the issue
         }
 
         # Make a POST request to the Llama server
