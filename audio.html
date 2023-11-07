@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Recorder</title>
+</head>
+<body>
+    <button id="recordButton">Record</button>
+    <p id="status"></p>
+    <ul id="recordingsList"></ul>
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+
+        const recordButton = document.getElementById("recordButton");
+        const statusElement = document.getElementById("status");
+        const recordingsList = document.getElementById("recordingsList");
+        let isRecording = false;
+
+        // WebSocket connection
+        const ws = new WebSocket('ws://localhost:8080');
+        ws.binaryType = 'arraybuffer';
+
+        ws.onopen = function () {
+            console.log("Connected to the WebSocket server!");
+        };
+
+        ws.onerror = function (error) {
+            console.log('WebSocket Error: ' + error);
+        };
+
+        recordButton.addEventListener("click", () => {
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+
+        async function startRecording() {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.start();
+
+            mediaRecorder.addEventListener("dataavailable", event => {
+                audioChunks.push(event.data);
+            });
+
+            mediaRecorder.addEventListener("stop", () => {
+                const audioBlob = new Blob(audioChunks);
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                const listItem = document.createElement("li");
+                listItem.appendChild(audio);
+                recordingsList.appendChild(listItem);
+                audioChunks = [];
+
+                // Sending the binary audio blob data directly to the WebSocket server
+                ws.send(audioBlob);
+
+                statusElement.textContent = "Recording sent!";
+            });
+
+            isRecording = true;
+            recordButton.textContent = "Stop Recording";
+            statusElement.textContent = "Recording...";
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            isRecording = false;
+            recordButton.textContent = "Record";
+        }
+    </script>
+</body>
+</html>
