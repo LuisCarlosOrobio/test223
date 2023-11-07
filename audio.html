@@ -50,7 +50,7 @@
             });
 
             mediaRecorder.addEventListener("stop", () => {
-                const audioBlob = new Blob(audioChunks);
+                const audioBlob = new Blob(audioChunks, { 'type' : 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
                 const listItem = document.createElement("li");
@@ -59,7 +59,10 @@
                 audioChunks = [];
 
                 if (ws.readyState === WebSocket.OPEN) {
-                    // Sending the binary audio blob data directly to the WebSocket server
+                    // First, send a JSON metadata object if the server expects it
+                    const metadata = JSON.stringify({ filename: "recording.wav", filetype: "audio/wav" });
+                    ws.send(metadata);
+                    // Then, send the binary audio blob data directly to the WebSocket server
                     ws.send(audioBlob);
                     statusElement.textContent = "Recording sent!";
                 } else {
