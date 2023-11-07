@@ -7,6 +7,7 @@
 </head>
 <body>
     <button id="recordButton">Start Recording</button>
+    <ul id="transcriptsList"></ul> <!-- List to display transcriptions -->
     <script>
         let mediaRecorder;
         let audioChunks = [];
@@ -17,7 +18,7 @@
         // Generate a UUID
         function generateUUID() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
         }
@@ -31,6 +32,16 @@
         // Listen for messages
         socket.addEventListener('message', function (event) {
             console.log('Message from server ', event.data);
+            try {
+                const response = JSON.parse(event.data);
+                if (response.text) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `Segment ${response.segmentNumber}: ${response.text}`;
+                    document.getElementById('transcriptsList').appendChild(listItem);
+                }
+            } catch (e) {
+                console.error('Error parsing the response: ', e);
+            }
         });
 
         // Access the user's microphone
@@ -75,7 +86,6 @@
                         "timestamp": new Date().toISOString(),
                         "payload": audioHex
                     },
-                    // Convert the sequence number to a string
                     "sequenceNumber": sequenceNumber.toString()
                 };
                 sequenceNumber++; // Increment sequence number after sending the message
@@ -90,9 +100,7 @@
 
         // Convert an ArrayBuffer to a hex string
         function arrayBufferToHex(buffer) {
-            return Array.from(new Uint8Array(buffer)).map(b =>
-                b.toString(16).padStart(2, '0')
-            ).join('');
+            return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
     </script>
 </body>
