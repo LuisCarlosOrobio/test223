@@ -59,12 +59,28 @@
                 audioChunks = [];
 
                 if (ws.readyState === WebSocket.OPEN) {
-                    // First, send a JSON metadata object if the server expects it
-                    const metadata = JSON.stringify({ filename: "recording.wav", filetype: "audio/wav" });
-                    ws.send(metadata);
-                    // Then, send the binary audio blob data directly to the WebSocket server
-                    ws.send(audioBlob);
-                    statusElement.textContent = "Recording sent!";
+                    const reader = new FileReader();
+                    reader.onloadend = function() {
+                        const audioBuffer = reader.result;
+
+                        // Sending the binary audio data directly to the WebSocket server
+                        ws.send(audioBuffer);
+
+                        // Prepare and send the metadata
+                        const metadata = {
+                            media: {
+                                track: "recording.wav", // Replace with your actual track identifier
+                                timestamp: new Date().toISOString(), // ISO format timestamp
+                                payload: "" // Payload would be handled separately; filled in if required
+                            },
+                            sequenceNumber: "0" // Placeholder for sequence number, update accordingly
+                        };
+
+                        // Send metadata as a JSON string
+                        ws.send(JSON.stringify(metadata));
+                        statusElement.textContent = "Recording sent!";
+                    };
+                    reader.readAsArrayBuffer(audioBlob);
                 } else {
                     console.error('WebSocket is not open. Cannot send data.');
                     statusElement.textContent = "Failed to send recording!";
