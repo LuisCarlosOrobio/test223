@@ -1,102 +1,64 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Recorder</title>
 </head>
 <body>
-    <button id="recordButton">Record</button>
-    <p id="status"></p>
-    <ul id="recordingsList"></ul>
+    <button id="recordButton">Start Recording</button>
     <script>
         let mediaRecorder;
         let audioChunks = [];
 
-        const recordButton = document.getElementById("recordButton");
-        const statusElement = document.getElementById("status");
-        const recordingsList = document.getElementById("recordingsList");
-        let isRecording = false;
+        // Access the user's microphone
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                mediaRecorder.onstop = sendAudioToServer;
+            })
+            .catch(error => {
+                console.error("Error accessing the microphone", error);
+            });
 
-        // WebSocket connection
-        const ws = new WebSocket('ws://localhost:8080');
-        ws.binaryType = 'arraybuffer';
-
-        ws.onopen = function () {
-            console.log("Connected to the WebSocket server!");
-        };
-
-        ws.onerror = function (error) {
-            console.error('WebSocket Error: ', error);
-        };
-
-        ws.onclose = function(event) {
-            console.log(`WebSocket is closed now. Code: ${event.code}, reason: ${event.reason}`);
-        };
-
-        recordButton.addEventListener("click", () => {
-            if (!isRecording) {
-                startRecording();
+        // Toggle recording on and off
+        const recordButton = document.getElementById('recordButton');
+        recordButton.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                recordButton.textContent = 'Start Recording';
             } else {
-                stopRecording();
+                audioChunks = []; // Clear previous data
+                mediaRecorder.start();
+                recordButton.textContent = 'Stop Recording';
             }
         });
 
-        async function startRecording() {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.start();
+        // Send the audio file to the server
+        function sendAudioToServer() {
+            const audioBlob = new Blob(audioChunks, { 'type' : 'audio/wav' });
+            const formData = new FormData();
+            formData.append('audio', audioBlob);
 
-            mediaRecorder.addEventListener("dataavailable", event => {
-                audioChunks.push(event.data);
-            });
-
-            mediaRecorder.addEventListener("stop", () => {
-                const audioBlob = new Blob(audioChunks, { 'type' : 'audio/wav' });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-                const listItem = document.createElement("li");
-                listItem.appendChild(audio);
-                recordingsList.appendChild(listItem);
-                audioChunks = [];
-
-                if (ws.readyState === WebSocket.OPEN) {
-                    const reader = new FileReader();
-                    reader.onloadend = function() {
-                        const audioBuffer = reader.result;
-
-                        // Sending the binary audio data directly to the WebSocket server
-                        ws.send(audioBuffer);
-
-                        // Prepare and send the metadata
-                        const metadata = {
-                            media: {
-                                track: "recording.wav", // Replace with your actual track identifier
-                                timestamp: new Date().toISOString(), // ISO format timestamp
-                                payload: "" // Payload would be handled separately; filled in if required
-                            },
-                            sequenceNumber: "0" // Placeholder for sequence number, update accordingly
-                        };
-
-                        // Send metadata as a JSON string
-                        ws.send(JSON.stringify(metadata));
-                        statusElement.textContent = "Recording sent!";
-                    };
-                    reader.readAsArrayBuffer(audioBlob);
-                } else {
-                    console.error('WebSocket is not open. Cannot send data.');
-                    statusElement.textContent = "Failed to send recording!";
+            fetch('http://localhost:8080/audio', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
                 }
+                throw new Error('Network response was not ok.');
+            })
+            .then(data => {
+                console.log('Success:', data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
             });
-
-            isRecording = true;
-            recordButton.textContent = "Stop Recording";
-            statusElement.textContent = "Recording...";
-        }
-
-        function stopRecording() {
-            mediaRecorder.stop();
-            isRecording = false;
-            recordButton.textContent = "Record";
-            statusElement.textContent = "";
         }
     </script>
 </body>
