@@ -75,8 +75,10 @@
                         "timestamp": new Date().toISOString(),
                         "payload": audioHex
                     },
-                    "sequenceNumber": sequenceNumber++
+                    // Convert the sequence number to a string
+                    "sequenceNumber": sequenceNumber.toString()
                 };
+                sequenceNumber++; // Increment sequence number after sending the message
                 if (socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify(message));
                 } else {
