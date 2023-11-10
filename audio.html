@@ -9,18 +9,24 @@
     <button id="recordButton">Start Recording</button>
     <ul id="transcriptsList"></ul> <!-- List to display transcriptions -->
     <script>
+        console.log('Script execution started'); // Log when script execution starts
         let mediaRecorder;
         let audioChunks = [];
         const socket = new WebSocket('ws://localhost:8080');
         let trackId;
         let sequenceNumber = 0;
 
+        console.log('Attempting to connect to WebSocket server');
+
         // Generate a UUID
         function generateUUID() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
+            console.log('Generated UUID:', uuid); // Log generated UUID
+            return uuid;
         }
 
         // Connection opened
@@ -34,10 +40,12 @@
             console.log('Message from server ', event.data);
             try {
                 const response = JSON.parse(event.data);
+                console.log('Parsed response:', response); // Log the parsed response
                 if (response.text) {
                     const listItem = document.createElement('li');
                     listItem.textContent = `Segment ${response.segmentNumber}: ${response.text}`;
                     document.getElementById('transcriptsList').appendChild(listItem);
+                    console.log('Appended text to transcripts list'); // Log success of appending
                 }
             } catch (e) {
                 console.error('Error parsing the response: ', e);
@@ -47,11 +55,14 @@
         // Access the user's microphone
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
+                console.log('UserMedia obtained');
                 mediaRecorder = new MediaRecorder(stream);
                 mediaRecorder.ondataavailable = event => {
+                    console.log('MediaRecorder data available'); // Log when data is available
                     audioChunks.push(event.data);
                 };
                 mediaRecorder.onstop = () => {
+                    console.log('MediaRecorder stopped'); // Log when recording is stopped
                     const audioBlob = new Blob(audioChunks, { 'type' : 'audio/wav' });
                     sendAudioToServer(audioBlob);
                 };
@@ -67,16 +78,19 @@
                 mediaRecorder.stop();
                 recordButton.textContent = 'Start Recording';
                 sequenceNumber = 0; // Reset sequence number for a new recording
+                console.log('Recording stopped by user'); // Log when recording is stopped by user
             } else {
                 audioChunks = []; // Clear previous data
                 mediaRecorder.start();
                 recordButton.textContent = 'Stop Recording';
                 trackId = generateUUID(); // Generate a new track ID for a new recording
+                console.log('Recording started by user'); // Log when recording is started by user
             }
         });
 
         // Send the audio file to the server
         function sendAudioToServer(audioBlob) {
+            console.log('Preparing to send audio to server');
             const reader = new FileReader();
             reader.onloadend = () => {
                 const audioHex = arrayBufferToHex(reader.result);
@@ -89,8 +103,10 @@
                     "sequenceNumber": sequenceNumber.toString()
                 };
                 sequenceNumber++; // Increment sequence number after sending the message
+                console.log('Sending message to server:', message); // Log the message being sent
                 if (socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify(message));
+                    console.log('Message sent to server'); // Log after sending the message
                 } else {
                     console.error('WebSocket is not open.');
                 }
@@ -100,7 +116,9 @@
 
         // Convert an ArrayBuffer to a hex string
         function arrayBufferToHex(buffer) {
-            return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            const hex = Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            console.log('Converted ArrayBuffer to hex'); // Log after converting to hex
+            return hex;
         }
     </script>
 </body>
