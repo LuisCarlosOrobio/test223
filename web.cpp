@@ -1,7 +1,6 @@
 #include "common.h"
 #include "common-sdl.h"
 #include "whisper.h"
-
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/asio/ip/tcp.hpp>
