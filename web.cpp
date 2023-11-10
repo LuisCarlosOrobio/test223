@@ -56,6 +56,7 @@ struct whisper_params {
     bool print_special = false;
     bool no_context    = true;
     bool no_timestamps = false;
+    bool use_gpu       = true;
 
     std::string language  = "en";
     std::string model     = "models/ggml-base.en.bin";
@@ -349,8 +350,11 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    struct whisper_context_params cparams;
+    cparams.use_gpu = params.use_gpu;    
+
     // Initialize the whisper context
-    struct whisper_context * ctx = whisper_init_from_file(params.model.c_str());
+    struct whisper_context * ctx = whisper_init_from_file_with_params(params.model.c_str(), cparams);
     if (ctx == NULL) {
         fprintf(stderr, "failed to create whisper context\n");
         return 1;
