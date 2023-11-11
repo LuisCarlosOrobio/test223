@@ -1,9 +1,8 @@
-from fastapi import FastAPI, UploadFile, File, WebSocket
+from fastapi import FastAPI, UploadFile, File, WebSocket, HTTPException
 from starlette.responses import HTMLResponse
 import base64
 import uuid
 from datetime import datetime
-import asyncio
 
 app = FastAPI()
 
@@ -14,35 +13,39 @@ async def get():
         html_content = f.read()
     return HTMLResponse(content=html_content)
 
+# WebSocket route
+@app.websocket('/ws')
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        try:
+            # Wait for any message from the client
+            data = await websocket.receive_text()
+            # Here you would handle incoming messages
+            # For example, echo the message back to the client
+            await websocket.send_text(f"Message text was: {data}")
+        except Exception as e:
+            print(f"Error: {e}")
+            break
+
 # Handle the audio upload
 @app.post('/upload')
 async def upload_audio(audio: UploadFile = File(...)):
-    audio_content = await audio.read()
+    try:
+        audio_content = await audio.read()
+        audio_hex = base64.b64encode(audio_content).decode('utf-8')
+        track_id = str(uuid.uuid4())
+        current_timestamp = datetime.utcnow().isoformat() + 'Z'
 
-    # Convert the audio file to a hex string
-    audio_hex = base64.b64encode(audio_content).decode('utf-8')
-
-    # Generate a UUID for the track
-    track_id = str(uuid.uuid4())
-
-    # Get the current timestamp in ISO 8601 format
-    current_timestamp = datetime.utcnow().isoformat() + 'Z'
-
-    # Prepare the payload
-    payload = {
-        "media": {
-            "track": track_id,
-            "timestamp": current_timestamp,
-            "payload": audio_hex
-        },
-        "sequenceNumber": "0"
-    }
-
-    # Connect to the WebSocket server and send the data
-    async with WebSocket(f'ws://localhost:8080/') as websocket:
-        await websocket.send_json(payload)
-        response = await websocket.receive_json()
-        return response
+        # Since we cannot create a new WebSocket connection inside a regular HTTP endpoint,
+        # you would need to handle the WebSocket communication in the '/ws' route.
+        # The '/upload' endpoint would typically be used to handle file uploads only.
+        
+        # Return a response indicating the WebSocket path to connect to
+        return {"websocket_route": "/ws", "track_id": track_id, "timestamp": current_timestamp, "audio_hex": audio_hex}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == '__main__':
     import uvicorn
