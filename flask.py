@@ -1,22 +1,26 @@
-from flask import Flask, request, jsonify, render_template
-import requests
+from fastapi import FastAPI, UploadFile, File, WebSocket
+from starlette.responses import HTMLResponse
 import base64
 import uuid
 from datetime import datetime
+import asyncio
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route('/')
-def index():
-    # Render the index.html template
-    return render_template('index.html')
+# Serve the HTML page
+@app.get('/')
+async def get():
+    with open('index.html', 'r') as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content)
 
-@app.route('/upload', methods=['POST'])
-def upload_audio():
-    audio_file = request.files['audio']
+# Handle the audio upload
+@app.post('/upload')
+async def upload_audio(audio: UploadFile = File(...)):
+    audio_content = await audio.read()
 
-    # Convert the audio file to a hex string (or your required format)
-    audio_hex = base64.b64encode(audio_file.read()).decode('utf-8')
+    # Convert the audio file to a hex string
+    audio_hex = base64.b64encode(audio_content).decode('utf-8')
 
     # Generate a UUID for the track
     track_id = str(uuid.uuid4())
@@ -24,26 +28,22 @@ def upload_audio():
     # Get the current timestamp in ISO 8601 format
     current_timestamp = datetime.utcnow().isoformat() + 'Z'
 
-    # Prepare the payload with the generated track ID and current timestamp
+    # Prepare the payload
     payload = {
         "media": {
             "track": track_id,
             "timestamp": current_timestamp,
             "payload": audio_hex
         },
-        "sequenceNumber": "0"  # Adjust as per your requirements
+        "sequenceNumber": "0"
     }
 
-    # Forward the formatted data to your main server
-    server_url = 'http://localhost:8080/'  # Adjust if your API endpoint is different
-    response = requests.post(server_url, json=payload)
-
-    # Check if the request to the main server was successful
-    if response.status_code == 200:
-        # Return the response from your main server to the frontend
-        return jsonify(response.json())
-    else:
-        return jsonify({"error": "Error communicating with the main server"}), response.status_code
+    # Connect to the WebSocket server and send the data
+    async with WebSocket(f'ws://localhost:8080/') as websocket:
+        await websocket.send_json(payload)
+        response = await websocket.receive_json()
+        return response
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    import uvicorn
+    uvicorn.run(app, host='0.0.0.0', port=5000)
