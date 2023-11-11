@@ -1,93 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Recorder</title>
 </head>
 <body>
-    <button id="recordButton">Start Recording</button>
-    <ul id="transcriptsList"></ul> <!-- List to display transcriptions -->
+    <h1>Audio Recorder</h1>
+    <button id="startRecord">Start Recording</button>
+    <button id="stopRecord">Stop Recording</button>
+    <audio id="audioPlayback" controls></audio>
+
     <script>
-        console.log('Script execution started');
         let mediaRecorder;
         let audioChunks = [];
-        let ws;
 
-        // Open a WebSocket connection to the FastAPI server
-        function openWebSocket() {
-            ws = new WebSocket('ws://localhost:5000/ws');
-            ws.onmessage = function(event) {
-                // Handle messages received from the server
-                console.log('Message from server:', event.data);
-                displayTranscription(event.data); // Display each transcription
-            };
-            ws.onopen = function(event) {
-                console.log('WebSocket connection established');
-            };
-            ws.onerror = function(event) {
-                console.error('WebSocket error:', event);
-            };
-        }
-
-        // Access the user's microphone
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => {
-                console.log('UserMedia obtained');
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = event => {
-                    console.log('MediaRecorder data available');
-                    audioChunks.push(event.data);
-                };
-                mediaRecorder.onstop = () => {
-                    console.log('MediaRecorder stopped');
-                    const audioBlob = new Blob(audioChunks, { 'type' : 'audio/wav' });
-                    sendAudioToServer(audioBlob);
-                };
-            })
-            .catch(error => {
-                console.error("Error accessing the microphone", error);
-            });
-
-        // Toggle recording on and off
-        const recordButton = document.getElementById('recordButton');
-        recordButton.addEventListener('click', () => {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-                recordButton.textContent = 'Start Recording';
-                console.log('Recording stopped by user');
-            } else {
-                audioChunks = []; // Clear previous data
-                mediaRecorder.start();
-                recordButton.textContent = 'Stop Recording';
-                console.log('Recording started by user');
-            }
+        document.getElementById("startRecord").addEventListener("click", function(){
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+                    mediaRecorder.start();
+                });
         });
 
-        // Send the audio file to the FastAPI server
-        function sendAudioToServer(audioBlob) {
-            console.log('Sending audio to FastAPI backend');
-            const reader = new FileReader();
-            reader.onload = function() {
-                const audioData = reader.result;
-                ws.send(audioData); // Send the audio data as binary through the WebSocket
+        document.getElementById("stopRecord").addEventListener("click", function(){
+            mediaRecorder.stop();
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                document.getElementById("audioPlayback").src = audioUrl;
+                sendDataToServer(audioBlob);
+                audioChunks = [];
             };
-            reader.readAsArrayBuffer(audioBlob);
-        }
+        });
 
-        // Function to display the transcription
-        function displayTranscription(message) {
-            const data = JSON.parse(message); // Assuming the server sends a JSON string
-            if (data && data.text) {
-                const listItem = document.createElement('li');
-                listItem.textContent = data.text;
-                document.getElementById('transcriptsList').appendChild(listItem);
-                console.log('Appended text to transcripts list');
-            }
+        function sendDataToServer(blob) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const audioData = reader.result;
+                // Send this data to your Python WebSocket client for processing and forwarding to the server
+                console.log("Audio data ready to be sent:", audioData);
+                // Implement WebSocket connection and data sending here
+            };
+            reader.readAsArrayBuffer(blob);
         }
-
-        // Initialize WebSocket connection
-        openWebSocket();
     </script>
 </body>
 </html>
