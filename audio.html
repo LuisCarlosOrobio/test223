@@ -12,6 +12,23 @@
         console.log('Script execution started');
         let mediaRecorder;
         let audioChunks = [];
+        let ws;
+
+        // Open a WebSocket connection to the FastAPI server
+        function openWebSocket() {
+            ws = new WebSocket('ws://localhost:5000/ws');
+            ws.onmessage = function(event) {
+                // Handle messages received from the server
+                console.log('Message from server:', event.data);
+                displayTranscription(event.data); // Display each transcription
+            };
+            ws.onopen = function(event) {
+                console.log('WebSocket connection established');
+            };
+            ws.onerror = function(event) {
+                console.error('WebSocket error:', event);
+            };
+        }
 
         // Access the user's microphone
         navigator.mediaDevices.getUserMedia({ audio: true })
@@ -47,33 +64,30 @@
             }
         });
 
-        // Send the audio file to the Flask server
+        // Send the audio file to the FastAPI server
         function sendAudioToServer(audioBlob) {
-            console.log('Sending audio to Flask backend');
-            const formData = new FormData();
-            formData.append("audio", audioBlob, "recording.wav");
-
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Response from Flask backend:', data);
-                displayTranscription(data);
-            })
-            .catch(error => console.error('Error:', error));
+            console.log('Sending audio to FastAPI backend');
+            const reader = new FileReader();
+            reader.onload = function() {
+                const audioData = reader.result;
+                ws.send(audioData); // Send the audio data as binary through the WebSocket
+            };
+            reader.readAsArrayBuffer(audioBlob);
         }
 
         // Function to display the transcription
-        function displayTranscription(data) {
+        function displayTranscription(message) {
+            const data = JSON.parse(message); // Assuming the server sends a JSON string
             if (data && data.text) {
                 const listItem = document.createElement('li');
-                listItem.textContent = data.text; // Adjust according to your response structure
+                listItem.textContent = data.text;
                 document.getElementById('transcriptsList').appendChild(listItem);
                 console.log('Appended text to transcripts list');
             }
         }
+
+        // Initialize WebSocket connection
+        openWebSocket();
     </script>
 </body>
 </html>
