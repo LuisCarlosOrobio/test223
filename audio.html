@@ -12,13 +12,27 @@
     <script>
         let mediaRecorder;
         let audioChunks = [];
+        let websocket;
 
         document.getElementById("startRecord").addEventListener("click", function(){
+            // Establish WebSocket connection
+            websocket = new WebSocket("ws://localhost:8765");
+
+            websocket.onopen = function(event) {
+                console.log("WebSocket is open now.");
+            };
+
             navigator.mediaDevices.getUserMedia({ audio: true })
                 .then(stream => {
                     mediaRecorder = new MediaRecorder(stream);
                     mediaRecorder.ondataavailable = event => {
-                        audioChunks.push(event.data);
+                        // Instead of pushing to audioChunks, send each chunk to the server
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const audioData = reader.result;
+                            websocket.send(JSON.stringify({ data: new Uint8Array(audioData) }));
+                        };
+                        reader.readAsArrayBuffer(event.data);
                     };
                     mediaRecorder.start();
                 });
@@ -27,24 +41,13 @@
         document.getElementById("stopRecord").addEventListener("click", function(){
             mediaRecorder.stop();
             mediaRecorder.onstop = () => {
+                websocket.close();
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 document.getElementById("audioPlayback").src = audioUrl;
-                sendDataToServer(audioBlob);
                 audioChunks = [];
             };
         });
-
-        function sendDataToServer(blob) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const audioData = reader.result;
-                // Send this data to your Python WebSocket client for processing and forwarding to the server
-                console.log("Audio data ready to be sent:", audioData);
-                // Implement WebSocket connection and data sending here
-            };
-            reader.readAsArrayBuffer(blob);
-        }
     </script>
 </body>
 </html>
